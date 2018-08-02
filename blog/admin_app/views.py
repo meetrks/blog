@@ -3,16 +3,16 @@ import time
 from django.utils.text import slugify
 from rest_framework import status, serializers
 from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from base.utils import pagination
 from admin_app.models import Blog, Topic
 from admin_app.serializers import BlogSerializer, TopicSerializer
+from base.permissions import IsSuperUser
+from base.utils import pagination
 
 
 class BlogListView(ListAPIView, CreateAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsSuperUser,)
     serializer_class = BlogSerializer
 
     def get(self, request):
@@ -39,7 +39,7 @@ class BlogListView(ListAPIView, CreateAPIView):
 
 
 class BlogView(ListAPIView, UpdateAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsSuperUser,)
     serializer_class = BlogSerializer
 
     def get(self, request, id):
@@ -72,7 +72,7 @@ class BlogView(ListAPIView, UpdateAPIView):
 
 
 class TopicView(ListAPIView, CreateAPIView, UpdateAPIView):
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsSuperUser,)
     serializer_class = TopicSerializer
 
     def get(self, request):
