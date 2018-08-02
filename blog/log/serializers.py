@@ -1,7 +1,6 @@
-from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from admin_app.models import Blog, Topic, Comment
+from admin_app.models import Comment
 from admin_app.serializers import UserSerializer
 
 
