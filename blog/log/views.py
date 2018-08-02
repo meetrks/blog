@@ -1,127 +1,83 @@
 import time
 
-from django.utils.text import slugify
 from rest_framework import status, serializers
-from rest_framework.generics import ListAPIView, CreateAPIView, UpdateAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import ListAPIView, CreateAPIView
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from base.utils import pagination
-from log.models import Blog, Topic
-from log.serializers import BlogSerializer, TopicSerializer
+from admin_app.models import Blog, Comment
+from admin_app.serializers import BlogSerializer
+from log.serializers import CommentSerializer
 
 
-class BlogListView(ListAPIView, CreateAPIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = BlogSerializer
+class CommentView(ListAPIView, CreateAPIView):
+    permission_classes = (IsAuthenticatedOrReadOnly,)
+    serializer_class = CommentSerializer
 
-    def get(self, request):
-        queryset = Blog.objects.all()
-        paginator, result = pagination(queryset, request)
-        serializer = self.get_serializer(result, many=True)
-        response_data = serializer.data
-        return paginator.get_paginated_response(response_data)
+    def get(self, request, blog_id):
+        try:
+            blog = Blog.objects.get(pk=blog_id, status=1)
+            queryset = Comment.objects.filter(blog=blog, parent=None)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print e
+            return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, blog_id):
         try:
             data = request.data
-            data['slug'] = slugify(data['title'])
-            data['published_time'] = int(time.time())
+            Blog.objects.get(pk=blog_id, status=1)
+            data['blog'] = blog_id
             serializer = self.get_serializer(data=data)
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
+        except Blog.DoesNotExist:
+            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print e
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
-
-class BlogView(ListAPIView, UpdateAPIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = BlogSerializer
-
-    def get(self, request, id):
-        if not id:
-            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request, blog_id):
         try:
-            queryset = Blog.objects.get(pk=id)
-        except Blog.DoesNotExist:
-            return Response({"detail": "Invalid id provided"}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = self.get_serializer(queryset)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def put(self, request, id):
-        if not id:
-            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            data = request.data
-            data['slug'] = slugify(data['title'])
-            instance = Blog.objects.get(pk=id, creator=request.user)
-            serializer = self.get_serializer(instance, data=data)
-            if serializer.is_valid(raise_exception=True):
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-        except Blog.DoesNotExist:
-            return Response({"detail": "Invalid id provided"}, status=status.HTTP_400_BAD_REQUEST)
-        except serializers.ValidationError as e:
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
-            return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class BlogPublicView(ListAPIView, UpdateAPIView):
-    serializer_class = BlogSerializer
-
-    def get(self, request, id, title_slug):
-        try:
-            queryset = Blog.objects.get(pk=id, slug=title_slug)
-        except Blog.DoesNotExist:
-            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = self.get_serializer(queryset)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class TopicView(ListAPIView, CreateAPIView):
-    permission_classes = (IsAuthenticated,)
-    serializer_class = TopicSerializer
-
-    def get(self, request):
-        queryset = Topic.objects.all()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def create(self, request, *args, **kwargs):
-        try:
-            data = request.data
-            data['slug'] = slugify(data['topic'])
-            serializer = self.get_serializer(data=data)
-            if serializer.is_valid(raise_exception=True):
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-        except serializers.ValidationError as e:
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            print e
-            return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
-
-    def put(self, request):
-        try:
+            Blog.objects.get(pk=blog_id, status=1)
             data = request.data
             id = data.get('id')
             if not id:
                 return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-            data['slug'] = slugify(data['topic'])
-            instance = Topic.objects.get(pk=id)
+            instance = Comment.objects.get(pk=id, commented_by=request.user)
             serializer = self.get_serializer(instance, data=data)
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
-        except Topic.DoesNotExist:
-            return Response({"detail": "Invalid id provided"}, status=status.HTTP_400_BAD_REQUEST)
+        except Blog.DoesNotExist:
+            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+        except Comment.DoesNotExist:
+            return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print e
+            return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BlogView(ListAPIView):
+    serializer_class = BlogSerializer
+
+    def get(self, request, id=None, title_slug=None):
+        if id and title_slug:
+            try:
+                query = Blog.objects.get(pk=id, slug=title_slug, status=1)
+            except Blog.DoesNotExist:
+                return Response({"detail": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = self.get_serializer(query)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            queryset = Blog.objects.filter(status=1)
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Blog.DoesNotExist:
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)

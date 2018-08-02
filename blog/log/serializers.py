@@ -1,65 +1,34 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from log.models import Blog, Topic
+from admin_app.models import Blog, Topic, Comment
+from admin_app.serializers import UserSerializer
 
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = 'id', 'username', 'first_name', 'last_name', 'email'
+class RecursiveReplySerializer(serializers.Serializer):
+    def to_representation(self, sample):
+        serializer = self.parent.parent.__class__(sample, context=self.context)
+        return serializer.data
 
 
-class TopicSerializer(serializers.ModelSerializer):
-    slug = serializers.SlugField(write_only=True)
-
-    class Meta:
-        model = Topic
-        exclude = 'created', 'modified',
-
-    def create(self, validated_data):
-        instance = Topic.objects.create(**validated_data)
-        return instance
-
-    def update(self, instance, validated_data):
-        instance.topic = validated_data.get('topic', instance.topic)
-        instance.slug = validated_data.get('slug', instance.slug)
-        instance.save()
-        return instance
-
-
-class BlogSerializer(serializers.ModelSerializer):
-    creator = UserSerializer(read_only=True)
-    slug = serializers.SlugField(write_only=True)
-    related_topics = TopicSerializer(many=True, read_only=True)
-    shared_link = serializers.SerializerMethodField(read_only=True)
+class CommentSerializer(serializers.ModelSerializer):
+    commented_by = UserSerializer(read_only=True)
+    reply = RecursiveReplySerializer(many=True, read_only=True)
 
     class Meta:
-        model = Blog
-        exclude = 'created', 'modified',
-
-    @staticmethod
-    def get_shared_link(obj):
-        return '/blog/{}/{}/'.format(obj.pk, obj.slug)
-
-    @staticmethod
-    def validate_topic(topics):
-        try:
-            return [Topic.objects.get(pk=t['id']) for t in topics]
-        except:
-            raise serializers.ValidationError({"detail": "Invalid topic selected"})
+        model = Comment
+        exclude = 'created', 'modified', 'parent'
 
     def create(self, validated_data):
         user = self.context['request'].user
-        instance = Blog.objects.create(creator=user, **validated_data)
-        instance.related_topics.add(*self.validate_topic(self.context['request'].data.get('related_topics', None)))
+        parent_comment = self.context['request'].data.get('parent', None)
+        instance = Comment.objects.create(commented_by=user, **validated_data)
+        if parent_comment:
+            instance.parent = Comment.objects.get(pk=parent_comment)
+            instance.save()
         return instance
 
     def update(self, instance, validated_data):
-        instance.title = validated_data.get('title', instance.title)
-        instance.slug = validated_data.get('slug', instance.slug)
         instance.description = validated_data.get('description', instance.description)
-        instance.related_topics.clear()
-        instance.related_topics.add(*self.validate_topic(self.context['request'].data.get('related_topics', None)))
         instance.save()
         return instance
