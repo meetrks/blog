@@ -1,12 +1,12 @@
-import time
-
+from django.db.models import Q
 from rest_framework import status, serializers
 from rest_framework.generics import ListAPIView, CreateAPIView
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from admin_app.models import Blog, Comment
 from admin_app.serializers import BlogSerializer
+from base.utils import pagination
 from log.serializers import CommentSerializer
 
 
@@ -67,6 +67,21 @@ class CommentView(ListAPIView, CreateAPIView):
 class BlogView(ListAPIView):
     serializer_class = BlogSerializer
 
+    def get_filters(self):
+        filters = {}
+        query_params = self.request.query_params
+        reported_date_from = query_params.get('reported_date_from')
+        reported_date_to = query_params.get('reported_date_to')
+        if reported_date_from and reported_date_to:
+            reported_date_to = int(reported_date_to) + 86400
+            filters.update({"published_time__range": [reported_date_from, reported_date_to]})
+        topic = query_params.get('topic')
+        if topic:
+            filters.update({"related_topics": topic})
+        self.q = query_params.get('q')
+        self.page_size = query_params.get('page_size', 10)
+        return filters
+
     def get(self, request, id=None, title_slug=None):
         if id and title_slug:
             try:
@@ -76,8 +91,14 @@ class BlogView(ListAPIView):
             serializer = self.get_serializer(query)
             return Response(serializer.data, status=status.HTTP_200_OK)
         try:
-            queryset = Blog.objects.filter(status=1)
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Blog.DoesNotExist:
+            queryset = Blog.objects.filter(status=1, **self.get_filters())
+            if self.q:
+                queryset = queryset.filter(Q(title__icontains=self.q) | Q(description__icontains=self.q) |
+                                           Q(related_topics__topic__icontains=self.q)).distinct()
+            paginator, result = pagination(queryset, request, page_size=self.page_size)
+            serializer = self.get_serializer(result, many=True)
+            response_data = serializer.data
+            return paginator.get_paginated_response(response_data)
+        except Exception as e:
+            print e
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
