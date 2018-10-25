@@ -10,7 +10,7 @@ Pre Requirements-
 
 Get the source code from git-
 ```
-git clone https://github.com/skrsinghrahul/blog.git
+git clone https://github.com/pingrs/blog.git
 ```
 Create virtual environment and install dependencies-
 ```
