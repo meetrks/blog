@@ -20,7 +20,7 @@ pip install -r requirements.txt
 ```
 Create local settings file-
 ```
-cd blod
+cd blog
 cp blog/dev_settings_sample.py blog/dev_settings.py
 ```
 Change the MySql credentials in blog/dev_settings.py
