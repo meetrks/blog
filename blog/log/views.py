@@ -21,7 +21,7 @@ class CommentView(ListAPIView, CreateAPIView):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
     def create(self, request, blog_id):
@@ -38,7 +38,7 @@ class CommentView(ListAPIView, CreateAPIView):
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, blog_id):
@@ -60,7 +60,7 @@ class CommentView(ListAPIView, CreateAPIView):
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -100,5 +100,5 @@ class BlogView(ListAPIView):
             response_data = serializer.data
             return paginator.get_paginated_response(response_data)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)

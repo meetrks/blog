@@ -53,7 +53,7 @@ class BlogListView(ListAPIView, CreateAPIView):
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -110,7 +110,7 @@ class TopicView(ListAPIView, CreateAPIView, UpdateAPIView):
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request):
@@ -130,5 +130,5 @@ class TopicView(ListAPIView, CreateAPIView, UpdateAPIView):
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
+            print(e)
             return Response({"detail": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST)
