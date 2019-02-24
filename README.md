@@ -3,9 +3,9 @@ A simple django based backend apis to create blog posts which lets user (superus
 
 # Installation Guide
 Pre Requirements-
-- Python >= 2.7
+- Python 3.x
 - git
-- MySql 5.5 or above
+- MySql 5.7 or above
 - virtualenv
 
 Get the source code from git-
